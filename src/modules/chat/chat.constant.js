@@ -3,6 +3,7 @@ const chatType = Object.freeze({
   DIRECT_MESSAGE: "dm",
   SYSTEM: "system",
   TYPING: "typing",
+  HISTORY: "history",
 });
 
 module.exports = { chatType };

@@ -10,6 +10,7 @@ const {
   sendUsers,
 } = require("../../utils/broadcast.js");
 const { chatType } = require("./chat.constant.js");
+const { v4: uuidv4 } = require("uuid");
 
 /**
  * Sets up WebSocket event handling for real-time chat.
@@ -20,6 +21,7 @@ const { chatType } = require("./chat.constant.js");
 const setUpChatWebSocket = (wss) => {
   const users = new Map(); // username -> WebSocket
   const typingUsers = new Set();
+  const storedMessages = [];
 
   wss.on("connection", (ws) => {
     ws.username = null;
@@ -48,6 +50,9 @@ const setUpChatWebSocket = (wss) => {
           handleJoin(ws, ws.username, wss);
           sendUsersCount(wss, users);
           sendUsers(wss, users);
+
+          ws.send(JSON.stringify({ type: chatType.HISTORY, storedMessages }));
+
           break;
 
         /**
@@ -55,6 +60,17 @@ const setUpChatWebSocket = (wss) => {
          */
         case chatType.GROUP_CHAT:
           if (!ws.username) return;
+
+          const msgObj = {
+            id: uuidv4(),
+            type: chatType.GROUP_CHAT,
+            sender: ws.username,
+            text: msg.message,
+            ts: msg.timeStamp,
+          };
+          storedMessages.push(msgObj);
+          if (storedMessages.length > 20) storedMessages.shift();
+
           handleUserMessage(ws, msg.message, ws.username, wss);
           break;
 
@@ -63,6 +79,7 @@ const setUpChatWebSocket = (wss) => {
          */
         case chatType.DIRECT_MESSAGE:
           if (!ws.username) return;
+
           sendDirectMessage(
             `[${msg.timeStamp}] ${ws.username}: ${msg.message}`,
             ws,
